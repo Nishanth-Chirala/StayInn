@@ -1,0 +1,6 @@
+// Middleware function to upload the data on the cloudinary
+import multer from "multer";
+
+const upload = multer({storage: multer.diskStorage({})})
+
+export default upload;
