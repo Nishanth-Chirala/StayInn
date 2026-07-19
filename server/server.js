@@ -21,11 +21,7 @@ connectCloudinary();
 
 const app = express();
 // Find your current app.use(cors()) and replace it with this:
-app.use(cors({
-  origin: "http://localhost:5173", // 👈 Point this to your frontend URL
-  credentials: true,
-  allowedHeaders: ["Content-Type", "Authorization"] // 👈 Tells CORS to accept the token header
-}));
+app.use(cors());
 
 
 // API to listen to Stripe Webhooks
