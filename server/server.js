@@ -23,16 +23,15 @@ const app = express();
 // Find your current app.use(cors()) and replace it with this:
 app.use(cors());
 
-
 // API to listen to Stripe Webhooks
 app.post('/api/stripe', express.raw({ type: "application/json" }), stripeWebhooks)
+
+// API to listen Clerk Webhooks
+app.post("/api/clerk", express.raw({ type: "application/json" }), clerkWebhooks)
 
 // Middleware 
 app.use(express.json())
 app.use(clerkMiddleware())
-
-// API to listen Clerk Webhooks 
-app.use("/api/clerk", clerkWebhooks)
 
 // 1st Route ( Main Route )
 app.get('/', (req, res)=> res.send("API is working"))
