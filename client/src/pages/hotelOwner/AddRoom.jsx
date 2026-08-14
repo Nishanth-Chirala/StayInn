@@ -18,6 +18,7 @@ const AddRoom = () => {
     const [inputs, setInputs] = useState({
         roomType: '',
         pricePerNight: 0,
+        discount: 0,
         amenities: {
             'Free Wifi': false,
             'Free Breakfast': false,
@@ -36,6 +37,10 @@ const AddRoom = () => {
         toast.error("Please fill in all the details")
         return;
       }
+      if (inputs.discount < 0 || inputs.discount > 100) {
+        toast.error("Discount must be between 0 and 100")
+        return;
+      }
       // If all data is available
       setLoading(true);
 
@@ -43,6 +48,7 @@ const AddRoom = () => {
         const formData = new FormData()
         formData.append('roomType', inputs.roomType)
         formData.append('pricePerNight', inputs.pricePerNight)
+        formData.append('discount', inputs.discount)
         // Converting Amenities to Array & keeping only enabled Amenities
         const amenities = Object.keys(inputs.amenities).filter(key => inputs.amenities[key])
         // Apending the above amenities to form data
@@ -62,6 +68,7 @@ const AddRoom = () => {
           setInputs({
             roomType: '',
             pricePerNight: 0,
+            discount: 0,
             amenities: {
               'Free Wifi': false,
               'Free Breakfast': false,
@@ -115,6 +122,12 @@ const AddRoom = () => {
                 Price <span className='text-xs'>/night</span>
             </p>
             <input type="number" placeholder='0' className='border border-gray-300 mt-1 rounded p-2 w-24' value={inputs.pricePerNight} onChange={e=> setInputs({...inputs, pricePerNight: e.target.value})}/>
+        </div>
+        <div>
+            <p className='mt-4 text-gray-800'>
+                Discount <span className='text-xs'>(% off)</span>
+            </p>
+            <input type="number" min={0} max={100} placeholder='0' className='border border-gray-300 mt-1 rounded p-2 w-24' value={inputs.discount} onChange={e=> setInputs({...inputs, discount: e.target.value})}/>
         </div>
       </div>
 

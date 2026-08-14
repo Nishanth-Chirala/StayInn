@@ -1,7 +1,7 @@
 import express from "express";
 import upload from "../middleware/uploadMiddleware.js";
 import { protect } from "../middleware/authMiddleware.js";
-import { createRoom, getOwnerRooms, getRooms, toggleRoomAvailabililty } from "../controllers/roomController.js";
+import { createRoom, getOwnerRooms, getRooms, toggleRoomAvailabililty, updateRoomDiscount } from "../controllers/roomController.js";
 
 const roomRouter = express.Router();
 
@@ -13,6 +13,8 @@ roomRouter.get('/', getRooms);
 // 3rd Route
 roomRouter.get('/owner', protect, getOwnerRooms);
 // 4th Route
+roomRouter.post('/update-discount', protect, updateRoomDiscount);
+// 5th Route
 roomRouter.post('/toggle-availability', protect, toggleRoomAvailabililty);
 
 export default roomRouter;

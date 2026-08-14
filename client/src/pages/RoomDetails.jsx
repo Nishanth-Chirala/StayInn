@@ -1,19 +1,22 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { assets, facilityIcons, roomCommonData } from '../assets/assets';
 import StarRating from '../components/StarRating';
+import ReviewForm from '../components/experience/ReviewForm';
 import { useAppContext } from '../context/AppContext';
 import toast from 'react-hot-toast';
 
 const RoomDetails = () => {
 
     const {id} = useParams();
-    const {rooms, getToken, axios, navigate} = useAppContext()
+    const {rooms, getToken, axios, navigate, user} = useAppContext()
     const [room, setRoom] = useState(null);
     const [mainImage, setMainImage] = useState(null);
     const [checkInDate, setCheckInDate] = useState(null);
     const [checkOutDate, setCheckOutDate] = useState(null);
     const [guests, setGuests] = useState(1);
+    const [reviews, setReviews] = useState([]);
+    const [reviewEligibility, setReviewEligibility] = useState({ loading: true, canReview: false });
 
     const [isAvailable, setIsAvailable] = useState(false);
 
@@ -69,26 +72,100 @@ const RoomDetails = () => {
         toast.error(error.message)
       }
     }
+    const onContactHandler =async ()=>{
+      try {
+        navigate('/');
+        scrollTo(0,0);
+      } catch (error) {
+        console.log(error)
+      }
+    }
+
+    const loadReviews = useCallback(async () => {
+      try {
+        const { data } = await axios.get(`/api/reviews?roomId=${id}`);
+        if (data.success) {
+          setReviews(data.reviews);
+        }
+      } catch {
+        setReviews([]);
+      }
+    }, [axios, id]);
+
+    const averageRating = useMemo(() => {
+      if (!reviews.length) return 0;
+      const total = reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0);
+      return Math.round((total / reviews.length) * 10) / 10;
+    }, [reviews]);
+
+    const checkReviewEligibility = useCallback(async () => {
+      if (!user || !id) {
+        setReviewEligibility({ loading: false, canReview: false });
+        return;
+      }
+
+      try {
+        const { data } = await axios.get('/api/bookings/user', {
+          headers: { Authorization: `Bearer ${await getToken()}` },
+        });
+
+        if (data.success) {
+          const hasCompletedStay = data.bookings.some((booking) => {
+            const bookingRoomId = booking.room?._id || booking.room;
+            const checkoutDate = new Date(booking.checkOutDate);
+            return bookingRoomId === id && checkoutDate < new Date();
+          });
+
+          setReviewEligibility({ loading: false, canReview: hasCompletedStay });
+        } else {
+          setReviewEligibility({ loading: false, canReview: false });
+        }
+      } catch {
+        setReviewEligibility({ loading: false, canReview: false });
+      }
+    }, [axios, getToken, id, user]);
+
+    const handleReviewSubmit = async (payload) => {
+      try {
+        const { data } = await axios.post('/api/reviews', payload, {
+          headers: { Authorization: `Bearer ${await getToken()}` },
+        });
+
+        if (data.success) {
+          setReviews((prev) => [data.review, ...prev]);
+          toast.success('Your review has been submitted.');
+        } else {
+          toast.error(data.message || 'Unable to submit review.');
+        }
+      } catch (error) {
+        toast.error(error.message || 'Unable to submit review.');
+      }
+    };
 
     //Finding Rooms 
     useEffect(()=>{
         const room = rooms.find(room => room._id === id)
         room && setRoom(room)
         room && setMainImage(room.images[0])
-    },[rooms])
+    },[rooms, id])
+
+    useEffect(() => {
+      loadReviews();
+      checkReviewEligibility();
+    }, [loadReviews, checkReviewEligibility]);
 
   return room && (
     <div className='py-28 md:py-35 px-4 md:px-16 lg:px-24 xl:px-32'>
         {/* Room Details  */}
         <div className='flex flex-col md:flex-row items-start md:items-center gap-2'>
             <h1 className='text-3xl md:text-4xl font-playfair'>{room.hotel.name} <span className='font-inter text-sm'>({room.roomType})</span></h1>
-            <p className='text-xs font-inter py-1.5 px-3 text-white bg-orange-500 rounded-full'>20% OFF</p>
+            {room.discount > 0 ? <p className='text-xs font-inter py-1.5 px-3 text-white bg-orange-500 rounded-full'>{room.discount}% OFF</p> :'' }
         </div>
 
          {/* Room Rating  */}
         <div className='flex items-center gap-1 mt-2'>
-          <StarRating />
-          <p className='ml-2'>200+ reviews</p>
+          <StarRating rating={averageRating} />
+          <p className='ml-2'>{averageRating} ({reviews.length}{reviews.length > 2 ? '+' : ''} review{reviews.length === 1 ? '' : 's'})</p>
         </div>
 
         {/* Room Address  */}
@@ -194,13 +271,57 @@ const RoomDetails = () => {
             <div>
               <p className='text-lg md:text-xl'>Hosted By {room.hotel.name}</p>
               <div className='flex items-center mt-1'>
-                <StarRating />
-                <p className='ml-2'>200+ reviews</p>
+                <StarRating  />
+                <p className='ml-2'>{reviews.length} review{reviews.length === 1 ? '' : 's'}</p>
               </div>
             </div>
           </div>
-          <button className='px-6 py-2.5 mt-4 rounded text-white bg-primary hover:bg-primary-dull transition-all cursor-pointer'>Contact Now</button>
+          <button onClick={onContactHandler} className='px-6 py-2.5 mt-4 rounded text-white bg-primary hover:bg-primary-dull transition-all cursor-pointer'>Contact Now</button>
         </div>
+          
+          <div className='mt-16 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-8'>
+          <div className='flex flex-col gap-3 md:flex-row md:items-end md:justify-between'>
+            <div>
+              <p className='text-sm font-semibold uppercase tracking-[0.25em] text-primary'>Guest reviews</p>
+              <h2 className='font-playfair text-3xl text-slate-900'>Reviews for this room</h2>
+            </div>
+            <p className='text-sm text-slate-500'>Only authenticated guests with a completed stay can leave a review.</p>
+          </div>
+
+          <div className='mt-8 grid gap-6 lg:grid-cols-[0.95fr_1.05fr]'>
+            <div className='space-y-4'>
+              {reviews.length > 0 ? reviews.map((review) => (
+                <div key={review._id || review.id} className='rounded-2xl border border-slate-200 bg-slate-50 p-4'>
+                  <div className='flex items-center justify-between gap-3'>
+                    <div>
+                      <p className='font-semibold text-slate-900'>{review.title}</p>
+                      <p className='text-sm text-slate-500'>{review.name}</p>
+                    </div>
+                    <div className='rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-600'>
+                      {review.rating}/5
+                    </div>
+                  </div>
+                  <div className='mt-3 flex items-center gap-1'>
+                    <StarRating rating={review.rating} />
+                  </div>
+                  <p className='mt-3 text-sm leading-7 text-slate-600'>{review.review}</p>
+                </div>
+              )) : (
+                <div className='rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600'>
+                  No reviews yet for this room. Your stay can be the first one to share.
+                </div>
+              )}
+            </div>
+              {reviewEligibility.canReview != true ? "" :
+            <ReviewForm
+              roomId={id}
+              onSubmit={handleReviewSubmit}
+              isAuthenticated={Boolean(user)}
+              isEligible={reviewEligibility.canReview}
+              isCheckingEligibility={reviewEligibility.loading}
+            />}
+          </div>
+        </div> 
       
     </div>
   )

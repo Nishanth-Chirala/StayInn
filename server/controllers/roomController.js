@@ -5,7 +5,7 @@ import Room from "../models/Room.js";
 // API to create a new room for a hotel
 export const createRoom = async (req, res) => {
     try {
-        const {roomType, pricePerNight, amenities} = req.body;
+        const {roomType, pricePerNight, amenities, discount = 0} = req.body;
         const hotel = await Hotel.findOne({owner: req.auth().userId})
 
         // Checking the hotel availability
@@ -24,12 +24,33 @@ export const createRoom = async (req, res) => {
             hotel: hotel._id,
             roomType,
             pricePerNight: +pricePerNight,
+            discount: Math.min(Math.max(+discount || 0, 0), 100),
             amenities: JSON.parse(amenities),
             images,
         })
         res.json({ success: true, message: "Room Created Successfully" })
     } catch (error) {
         res.json({ success: false, message: error.message })
+    }
+}
+
+export const updateRoomDiscount = async (req, res) => {
+    try {
+        const { roomId, discount } = req.body;
+        const room = await Room.findById(roomId);
+        if (!room) return res.json({ success: false, message: "Room not found" });
+
+        const hotel = await Hotel.findOne({ owner: req.auth().userId });
+        if (!hotel || room.hotel.toString() !== hotel._id.toString()) {
+            return res.json({ success: false, message: "Unauthorized" });
+        }
+
+        room.discount = Math.min(Math.max(+discount || 0, 0), 100);
+        await room.save();
+
+        res.json({ success: true, message: "Room discount updated successfully", room });
+    } catch (error) {
+        res.json({ success: false, message: error.message });
     }
 }
 
@@ -57,6 +78,8 @@ export const getOwnerRooms = async (req, res) => {
     try {
         // Getting hotel data
         const hotelData = await Hotel.findOne({owner: req.auth().userId})
+        if (!hotelData) return res.json({success: false, message: "Hotel not found"});
+
         // Getting rooms of this particular hotel
         const rooms = await Room.find({hotel: hotelData._id.toString()}).populate("hotel");
         res.json({success: true, rooms});
@@ -73,6 +96,8 @@ export const toggleRoomAvailabililty = async (req, res) => {
         const { roomId } = req.body;
         // Gettign room data
         const roomData = await Room.findById(roomId);
+        if (!roomData) return res.json({success: false, message: "Room not found"});
+
         // Toggling isavailability property
         roomData.isAvailable = !roomData.isAvailable;
         // Updating data

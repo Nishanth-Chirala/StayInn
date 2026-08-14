@@ -24,6 +24,28 @@ const ListRoom = () => {
         }
     }
 
+    const updateDiscount = async (roomId, currentDiscount) => {
+        const input = window.prompt('Enter discount percentage (0-100)', currentDiscount?.toString() ?? '0');
+        if (input === null) return;
+        const discount = Number(input);
+        if (Number.isNaN(discount) || discount < 0 || discount > 100) {
+            toast.error('Discount must be a number between 0 and 100');
+            return;
+        }
+
+        try {
+            const { data } = await axios.post('/api/rooms/update-discount', { roomId, discount }, { headers: { Authorization: `Bearer ${await getToken()}` } });
+            if (data.success) {
+                toast.success(data.message);
+                fetchRooms();
+            } else {
+                toast.error(data.message);
+            }
+        } catch (error) {
+            toast.error(error.message);
+        }
+    }
+
     // Toggle Availability of the room
     const toggleAvailability = async (roomId) => {
         // Making API calls
@@ -57,6 +79,7 @@ const ListRoom = () => {
                     <th className='py-3 px-4 text-gray-800 font-medium'>Name</th>
                     <th className='py-3 px-4 text-gray-800 font-medium max-sm:hidden'>Facility</th>
                     <th className='py-3 px-4 text-gray-800 font-medium'>Price / night</th>
+                    <th className='py-3 px-4 text-gray-800 font-medium'>Discount</th>
                     <th className='py-3 px-4 text-gray-800 font-medium text-center'>Actions</th>
                 </tr>
             </thead>
@@ -72,6 +95,11 @@ const ListRoom = () => {
                             </td>
                             <td className='py-3 px-4 text-gray-700 border-t border-gray-300'>
                                 {currency} {item.pricePerNight}
+                            </td>
+                            <td className='py-3 px-4 text-gray-700 border-t border-gray-300'>
+                                <button className='text-blue-600 hover:underline' onClick={() => updateDiscount(item._id, item.discount)}>
+                                    {(item.discount ?? 0)}%
+                                </button>
                             </td>
                             <td className='py-3 px-4 border-t border-gray-300 text-sm text-red-500 text-center'>
                                 <label className='relative inline-flex items-center cursor-pointer text-gray-900 gap-3'>

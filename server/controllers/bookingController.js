@@ -51,7 +51,7 @@ export const createBooking = async (req, res) => {
         // if room is avialable
         // Get totalPrice from Room
         const roomData = await Room.findById(room).populate("hotel");
-        let totalPrice = roomData.pricePerNight;
+        let totalPrice = roomData.pricePerNight - (roomData.discount/100);
 
         // Calculate totalPrice based on night
         const checkIn = new Date(checkInDate);

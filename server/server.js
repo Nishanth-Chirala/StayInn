@@ -10,6 +10,7 @@ import hotelRouter from "./routes/hotelRoute.js";
 import connectCloudinary from "./configs/cloudinary.js";
 import roomRouter from "./routes/roomRoute.js";
 import bookingRouter from "./routes/bookingRoutes.js";
+import reviewRouter from "./routes/reviewRoutes.js";
 import { stripeWebhooks } from "./controllers/stripeWebhooks.js";
 
 dotenv.config();
@@ -20,7 +21,7 @@ connectDB()
 connectCloudinary();
 
 const app = express();
-// Find your current app.use(cors()) and replace it with this:
+
 app.use(cors());
 
 // API to listen to Stripe Webhooks
@@ -43,6 +44,7 @@ app.use('/api/hotels', hotelRouter)
 app.use('/api/rooms', roomRouter)
 // 5th Route ( Booking Route )
 app.use('/api/bookings', bookingRouter)
+app.use('/api/reviews', reviewRouter)
 
 // Port for running
 const PORT = process.env.PORT || 3000;
