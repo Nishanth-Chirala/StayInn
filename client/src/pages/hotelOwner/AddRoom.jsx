@@ -19,6 +19,8 @@ const AddRoom = () => {
         roomType: '',
         pricePerNight: 0,
         discount: 0,
+        maxGuests: 2,
+        description: '',
         amenities: {
             'Free Wifi': false,
             'Free Breakfast': false,
@@ -41,6 +43,10 @@ const AddRoom = () => {
         toast.error("Discount must be between 0 and 100")
         return;
       }
+      if (!Number.isInteger(Number(inputs.maxGuests)) || Number(inputs.maxGuests) < 1) {
+        toast.error("Guests must be a valid whole number greater than 0")
+        return;
+      }
       // If all data is available
       setLoading(true);
 
@@ -49,6 +55,8 @@ const AddRoom = () => {
         formData.append('roomType', inputs.roomType)
         formData.append('pricePerNight', inputs.pricePerNight)
         formData.append('discount', inputs.discount)
+        formData.append('maxGuests', inputs.maxGuests)
+        formData.append('description', inputs.description)
         // Converting Amenities to Array & keeping only enabled Amenities
         const amenities = Object.keys(inputs.amenities).filter(key => inputs.amenities[key])
         // Apending the above amenities to form data
@@ -69,6 +77,8 @@ const AddRoom = () => {
             roomType: '',
             pricePerNight: 0,
             discount: 0,
+            maxGuests: 2,
+            description: '',
             amenities: {
               'Free Wifi': false,
               'Free Breakfast': false,
@@ -129,9 +139,20 @@ const AddRoom = () => {
             </p>
             <input type="number" min={0} max={100} placeholder='0' className='border border-gray-300 mt-1 rounded p-2 w-24' value={inputs.discount} onChange={e=> setInputs({...inputs, discount: e.target.value})}/>
         </div>
+        <div>
+            <p className='mt-4 text-gray-800'>
+                Max Guests
+            </p>
+            <input type="number" min={1} placeholder='2' className='border border-gray-300 mt-1 rounded p-2 w-24' value={inputs.maxGuests} onChange={e=> setInputs({...inputs, maxGuests: e.target.value})}/>
+        </div>
       </div>
 
-      <p className='text-gray-800 mt-4'>Amenities</p>        
+      <div className='mt-4'>
+        <p className='text-gray-800'>Description</p>
+        <textarea value={inputs.description} onChange={e => setInputs({...inputs, description: e.target.value})} rows={4} placeholder='Describe the room and stay experience' className='border border-gray-300 mt-1 rounded p-2 w-full max-w-xl' />
+      </div>
+
+      <p className='text-gray-800 mt-4'>Amenities</p>
       <div className='flex flex-col flex-wrap mt-1 text-gray-400 max-w-sm'>
         {Object.keys(inputs.amenities).map((amenity, index)=>(
             <div key={index}>

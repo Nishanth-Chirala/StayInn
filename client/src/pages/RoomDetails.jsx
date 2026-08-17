@@ -20,6 +20,18 @@ const RoomDetails = () => {
 
     const [isAvailable, setIsAvailable] = useState(false);
 
+    const loadRoom = useCallback(async () => {
+      try {
+        const { data } = await axios.get(`/api/rooms/${id}`);
+        if (data.success) {
+          setRoom(data.room);
+          setMainImage(data.room.images?.[0] || null);
+        }
+      } catch {
+        setRoom(null);
+      }
+    }, [axios, id]);
+
     // Check if the Room is Available
     const checkAvailability = async () => {
       try {
@@ -52,24 +64,46 @@ const RoomDetails = () => {
     const onSubmitHandler = async (e) => {
       try {
         e.preventDefault();
-        if(!isAvailable){
+
+        if (!user) {
+          toast.error('Please sign in before booking a room.');
+          navigate('/');
+          return;
+        }
+
+        if (!checkInDate || !checkOutDate || !guests) {
+          toast.error('Please select check-in, check-out, and guest count.');
+          return;
+        }
+
+        if (new Date(checkInDate) >= new Date(checkOutDate)) {
+          toast.error('Check-In Date should be less than Check-Out Date');
+          return;
+        }
+
+        if (!isAvailable) {
           return checkAvailability();
-        }else {
-          // Calling API to book the room
-          const { data } = await axios.post('/api/bookings/book', {room: id, checkInDate, checkOutDate, guests, paymentMethod: "Pay At Hotel"}, {headers: { Authorization: `Bearer ${await getToken()}`}})
-          // checking response
-          if(data.success){
-            toast.success(data.message)
-            // after success navigating user to my-bookings
-            navigate('/my-bookings')
-            // Scrolling web page to top
-            scrollTo(0, 0)
-          } else {
-            toast.error(data.message)
-          }
+        }
+
+        const { data } = await axios.post('/api/bookings/book', {
+          room: id,
+          checkInDate,
+          checkOutDate,
+          guests: Number(guests),
+          paymentMethod: 'Pay At Hotel',
+        }, {
+          headers: { Authorization: `Bearer ${await getToken()}` },
+        });
+
+        if (data.success) {
+          toast.success(data.message);
+          navigate('/my-bookings');
+          scrollTo(0, 0);
+        } else {
+          toast.error(data.message);
         }
       } catch (error) {
-        toast.error(error.message)
+        toast.error(error.message || 'Unable to complete booking.');
       }
     }
     const onContactHandler =async ()=>{
@@ -144,10 +178,15 @@ const RoomDetails = () => {
 
     //Finding Rooms 
     useEffect(()=>{
-        const room = rooms.find(room => room._id === id)
-        room && setRoom(room)
-        room && setMainImage(room.images[0])
-    },[rooms, id])
+        const matchedRoom = rooms.find(room => room._id === id)
+        if (matchedRoom) {
+          setRoom(matchedRoom)
+          setMainImage(matchedRoom.images?.[0] || null)
+          return;
+        }
+
+        loadRoom();
+    },[rooms, id, loadRoom])
 
     useEffect(() => {
       loadReviews();
@@ -261,7 +300,7 @@ const RoomDetails = () => {
 
         {/* Description  */}
         <div className='max-w-3xl border-y border-gray-300 my-15 py-10 text-gray-500'>
-          <p>Guests will be allocated on the ground floor according to availability. You get a comfortable Two bedroom apartment has a true city feeling. The price quoted is for two guests, at the guests slot please mark the number of guests to get the exact price for groups.</p>
+          <p>{room.description || 'Guests will be allocated on the ground floor according to availability. You get a comfortable Two bedroom apartment has a true city feeling. The price quoted is for two guests, at the guests slot please mark the number of guests to get the exact price for groups.'}</p>
         </div>
 
         {/* Hosted by  */}

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { assets, facilityIcons, } from '../assets/assets'
 import { useSearchParams } from 'react-router-dom'
 import StarRating from '../components/StarRating';
@@ -30,8 +30,9 @@ const AllRooms = () => {
     const [searchParams, setSearchParams] = useSearchParams();
 
     // Getting rooms data through AppContext.jsx file
-    const {rooms, navigate, currency} = useAppContext();
+    const {rooms, navigate, currency, axios} = useAppContext();
 
+    const [reviewStats, setReviewStats] = useState({});
     const [openFilters, setOpenFilters] = useState(false);
     // For filtering hotel list
     const [selectedFilters, setSelectedFilters] = useState({
@@ -116,6 +117,37 @@ const AllRooms = () => {
     const filteredRooms = useMemo(() => {
         return rooms.filter(room => matchesRoomType(room) && matchesPriceRange(room) && filterDestination(room)).sort(sortRooms);
     },[rooms, selectedFilters, selectedSort, searchParams])
+useEffect(() => {
+    // 1. Guard clause handles empty or uninitialized array safely
+    if (!rooms || rooms.length === 0) return;
+
+    const fetchReviewStats = async () => {
+        const stats = {};
+
+        // 2. Optimization: Fetch data concurrently instead of sequentially
+        const promises = rooms.map(async (room) => {
+            try {
+                const { data } = await axios.get(`/api/reviews/stats?roomId=${room._id}`);
+                stats[room._id] = {
+                    totalReviews: data.success ? (data.totalReviews || 0) : 0,
+                    averageRating: data.success ? (data.averageRating || 0) : 0
+                };
+            } catch {
+                stats[room._id] = { totalReviews: 0, averageRating: 0 };
+            }
+        });
+
+        await Promise.all(promises);
+        setReviewStats(stats);
+    };
+
+    fetchReviewStats();
+}, [rooms]); // 3. Added rooms to dependency array
+
+// 4. Debug state changes in a separate effect
+useEffect(() => {
+    console.log("Updated reviewStats:", reviewStats);
+}, [reviewStats]);
 
     // Clear all filter
     const clearFilters = () => {
@@ -144,9 +176,15 @@ const AllRooms = () => {
                     <p onClick={()=> {navigate(`/rooms/${room._id}`); scrollTo(0,0)}}
                     className='text-gray-800 text-3xl font-playfair cursor-pointer'>{room.hotel.name}</p>
                     <div className='flex items-center'>
-                        <StarRating />
-                        <p className='ml-2'>200+ reviews</p>
+                        {/* 1. Added optional chaining (?.) to prevent crashing while data loads */}
+                        <StarRating rating={reviewStats?.[room._id]?.averageRating || 0}/>
+                        
+                        <p className='ml-2 text-sm text-gray-600'>
+                            {/* 2. Simplified fallback check */}
+                            {reviewStats?.[room._id]?.totalReviews || 0} review{reviewStats?.[room._id]?.totalReviews === 1 ? '' : 's'}
+                        </p>
                     </div>
+
                     <div className='flex items-center gap-1 text-gray-500 mt-2 text-sm'>
                         <img src={assets.locationIcon} alt="location-icon" />
                         <span>{room.hotel.address}</span>
@@ -163,7 +201,7 @@ const AllRooms = () => {
                     </div>
 
                     {/* Room Price per Night  */}
-                    <p className='text-xl font-medium text-gray-700'>${room.pricePerNight} /night</p>
+                    <p className='text-xl font-medium text-gray-700'>{currency}{room.pricePerNight} /night</p>
                 </div>
             </div>
         ))}

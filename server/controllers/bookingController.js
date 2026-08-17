@@ -2,7 +2,7 @@ import transporter from "../configs/nodemailer.js";
 import Booking from "../models/Booking.js"
 import Hotel from "../models/Hotel.js";
 import Room from "../models/Room.js";
-import stripe from "stripe";
+import Stripe from "stripe";
 
 // Function to Check Availability of R
 const checkAvailability = async ({ checkInDate, checkOutDate, room }) => {
@@ -26,10 +26,26 @@ const checkAvailability = async ({ checkInDate, checkOutDate, room }) => {
 export const checkAvailabilityAPI = async (req, res) => {
     try {
         const { room, checkInDate, checkOutDate } = req.body;
+
+        if (!room || !checkInDate || !checkOutDate) {
+            return res.status(400).json({ success: false, message: 'Room, check-in date, and check-out date are required.' });
+        }
+
+        const checkIn = new Date(checkInDate);
+        const checkOut = new Date(checkOutDate);
+
+        if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime())) {
+            return res.status(400).json({ success: false, message: 'Invalid date provided.' });
+        }
+
+        if (checkOut <= checkIn) {
+            return res.status(400).json({ success: false, message: 'Check-out date must be after check-in date.' });
+        }
+
         const isAvailable = await checkAvailability({ checkInDate, checkOutDate, room });
-        res.json({success: true, isAvailable})
+        return res.json({ success: true, isAvailable });
     } catch (error) {
-        res.json({success: false, message: error.message})
+        return res.status(500).json({ success: false, message: error.message });
     }
 }
 
@@ -38,39 +54,59 @@ export const checkAvailabilityAPI = async (req, res) => {
 // POST /api/bookings/book
 export const createBooking = async (req, res) => {
     try {
-        
-        const { room, checkInDate, checkOutDate, guests } = req.body;
+
+        const { room, checkInDate, checkOutDate, guests, paymentMethod } = req.body;
         const user = req.user._id;
 
-        // Before Booking Check Availability
-        const isAvailable = await checkAvailability({checkInDate, checkOutDate, room});
-        if(!isAvailable) {
-            return res.json({success: false, message: "Room is not available"})
+        if (!room || !checkInDate || !checkOutDate || guests === undefined || guests === null || guests === '') {
+            return res.status(400).json({ success: false, message: 'Room, dates, and guest count are required.' });
         }
 
-        // if room is avialable
-        // Get totalPrice from Room
-        const roomData = await Room.findById(room).populate("hotel");
-        let totalPrice = roomData.pricePerNight - (roomData.discount/100);
+        const guestCount = Number(guests);
+        if (!Number.isInteger(guestCount) || guestCount < 1) {
+            return res.status(400).json({ success: false, message: 'Guests must be a valid number greater than 0.' });
+        }
 
-        // Calculate totalPrice based on night
         const checkIn = new Date(checkInDate);
         const checkOut = new Date(checkOutDate);
+
+        if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime())) {
+            return res.status(400).json({ success: false, message: 'Invalid booking dates provided.' });
+        }
+
+        if (checkOut <= checkIn) {
+            return res.status(400).json({ success: false, message: 'Check-out date must be after check-in date.' });
+        }
+
+        const isAvailable = await checkAvailability({ checkInDate, checkOutDate, room });
+        if (!isAvailable) {
+            return res.json({ success: false, message: 'Room is not available' });
+        }
+
+        const roomData = await Room.findById(room).populate('hotel');
+        if (!roomData) {
+            return res.status(404).json({ success: false, message: 'Room not found.' });
+        }
+
+        if (guestCount > roomData.maxGuests) {
+            return res.status(400).json({ success: false, message: `This room accommodates up to ${roomData.maxGuests} guests.` });
+        }
+
+        const discountedNightPrice = roomData.pricePerNight * (1 - roomData.discount / 100);
         const timeDiff = checkOut.getTime() - checkIn.getTime();
-        const nights = Math.ceil( timeDiff / (1000 * 3600 * 24) );
+        const nights = Math.ceil(timeDiff / (1000 * 3600 * 24));
+        const totalPrice = discountedNightPrice * nights;
 
-        totalPrice *= nights;
-
-        // Now creating booking
         const booking = await Booking.create({
             user,
             room,
             hotel: roomData.hotel._id,
-            guests: +guests,
+            guests: guestCount,
             checkInDate,
             checkOutDate,
             totalPrice,
-        })
+            paymentMethod: paymentMethod || 'Pay At Hotel',
+        });
 
         // Mail options
         const mailOptions = {
@@ -141,7 +177,7 @@ export const getHotelBookings = async (req, res) => {
     try {
         
         // Find the hotel for this owner
-        const hotel = await Hotel.findOne({owner: req.auth().userId});
+        const hotel = await Hotel.findOne({ owner: req.user._id });
         if(!hotel) {
             return res.json({success: false, message: "No Hotel found"});
         }
@@ -173,6 +209,14 @@ export const stripePayment = async (req, res) => {
 
         // Find booking data
         const booking = await Booking.findById(bookingId);
+        if (!booking) {
+            return res.status(404).json({ success: false, message: "Booking not found" });
+        }
+
+        if (booking.user.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ success: false, message: "Unauthorized" });
+        }
+
         // Find room data from booking data
         const roomData = await Room.findById(booking.room).populate('hotel');
         // Getting price
@@ -181,7 +225,7 @@ export const stripePayment = async (req, res) => {
         const { origin } = req.headers;
 
         // Stripe instance
-        const stripeInstance = new stripe(process.env.STRIPE_SECRET_KEY);
+        const stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY);
 
         // Line items - for stripe
         const line_items = [

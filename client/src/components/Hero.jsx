@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { assets, cities } from '../assets/assets'
+import { assets } from '../assets/assets'
 import { useAppContext } from '../context/AppContext'
 
 const Hero = () => {
@@ -39,11 +39,7 @@ const Hero = () => {
                     <label htmlFor="destinationInput">Destination</label>
                 </div>
                 <input onChange={e=> setDestination(e.target.value)} value={destination} list='destinations' id="destinationInput" type="text" className=" rounded border border-gray-200 px-3 py-1.5 mt-1.5 text-sm outline-none" placeholder="Type here" required />
-                <datalist id='destinations'>
-                    {cities.map((city, index)=>(
-                        <option value={city} key={index} />
-                    ))}
-                </datalist>
+                
             </div>
 
             <div>

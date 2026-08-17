@@ -22,7 +22,24 @@ connectCloudinary();
 
 const app = express();
 
-app.use(cors());
+const allowedOrigins = [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    process.env.FRONTEND_URL,
+    process.env.VITE_FRONTEND_URL,
+].filter(Boolean);
+
+app.use(cors({
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+            return;
+        }
+
+        callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+}));
 
 // API to listen to Stripe Webhooks
 app.post('/api/stripe', express.raw({ type: "application/json" }), stripeWebhooks)

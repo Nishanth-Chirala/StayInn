@@ -1,11 +1,11 @@
-import stripe from "stripe";
+import Stripe from "stripe";
 import Booking from "../models/Booking.js";
 
 // API to handle Stripe Webhooks    - in short to update mongodb database - applicable if payment is done
 
 export const stripeWebhooks = async (request, response) => {
     // Intializing Stripe Gateway
-    const stripeInstance = new stripe(process.env.STRIPE_SECRET_KEY);
+    const stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY);
     const sig = request.headers['stripe-signature'];
     let event;
 

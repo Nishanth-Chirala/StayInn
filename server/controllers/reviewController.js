@@ -8,7 +8,26 @@ export const getReviews = async (req, res) => {
     const { roomId } = req.query;
     const filter = roomId ? { room: roomId } : {};
     
+    // Fix: Populate 'user' instead of the non-existent 'Hotel' path
     const reviews = await Review.find(filter)
+      .populate({
+        path: 'room',
+        populate: { path: 'hotel' } // Deep populate hotel if it lives inside Room schema
+      })
+      .populate('user') // Populates user details for ExperienceList
+      .sort({ createdAt: -1 });
+      
+    return res.status(200).json({ success: true, reviews });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
+export const geAllReviews = async (req, res) => {
+  try {
+    
+    const reviews = await Review.find({})
       .populate('room')
       .sort({ createdAt: -1 });
       
@@ -17,6 +36,7 @@ export const getReviews = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
+
 
 // @desc    Create a new review (Verified buyers only)
 // @route   POST /api/reviews
@@ -71,20 +91,24 @@ export const createReview = async (req, res) => {
 
 // @desc    Get total review count and average rating (Global or per Room)
 // @route   GET /api/reviews/stats
+import mongoose from 'mongoose'; // 1. Import mongoose at the top
+
 export const numberOfreviews = async (req, res) => {
   try {
     const { roomId } = req.query;
-
-    // Fast-path: If you only need a simple count without average ratings
     if (!roomId) {
       const totalCount = await Review.countDocuments({});
       return res.status(200).json({ success: true, totalReviews: totalCount });
     }
 
+    // 2. Convert string ID into a native MongoDB ObjectId
+    const roomObjectId = new mongoose.Types.ObjectId(roomId);
+
     // Advanced-path: Get count and average rating using MongoDB Aggregation
     const stats = await Review.aggregate([
       { 
-        $match: { room: roomId } 
+        // 3. Match against the actual ObjectId instance
+        $match: { room: roomObjectId } 
       },
       {
         $group: {
@@ -111,6 +135,7 @@ export const numberOfreviews = async (req, res) => {
     });
 
   } catch (error) {
+    console.error("Backend Error:", error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };
