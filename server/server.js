@@ -29,17 +29,7 @@ const allowedOrigins = [
     process.env.VITE_FRONTEND_URL,
 ].filter(Boolean);
 
-app.use(cors({
-    origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-            return;
-        }
-
-        callback(new Error('Not allowed by CORS'));
-    },
-    credentials: true,
-}));
+app.use(cors());
 
 // API to listen to Stripe Webhooks
 app.post('/api/stripe', express.raw({ type: "application/json" }), stripeWebhooks)
