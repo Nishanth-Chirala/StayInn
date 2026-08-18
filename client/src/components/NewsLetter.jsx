@@ -16,7 +16,9 @@ const NewsLetter = () => {
         }
         setEmail('');
     }
-  return (
+    
+  return   (
+    
     <div className="flex flex-col items-center max-w-5xl lg:w-full rounded-2xl px-4 py-12 md:py-16 mx-2 lg:mx-auto my-30 bg-gray-900 text-white">
 
         <Title title="Stay Inspired" subTitle="Join our newsletter and be the first to discover new destinations, exclusive offers, and travel inspiration."/>
@@ -30,7 +32,7 @@ const NewsLetter = () => {
             <p className="text-gray-500 mt-6 text-xs text-center">By subscribing, you agree to our Privacy Policy and consent to receive updates.</p>
         </div>
 
-  )
+  ) 
 }
 
 export default NewsLetter

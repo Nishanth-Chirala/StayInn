@@ -76,6 +76,7 @@ const ListRoom = () => {
          <table className='w-full'>
             <thead className='bg-gray-50'>
                 <tr>
+                    <th className='py-3 px-4 text-gray-800 font-medium'>Hotel</th>
                     <th className='py-3 px-4 text-gray-800 font-medium'>Name</th>
                     <th className='py-3 px-4 text-gray-800 font-medium max-sm:hidden'>Facility</th>
                     <th className='py-3 px-4 text-gray-800 font-medium'>Price / night</th>
@@ -87,6 +88,9 @@ const ListRoom = () => {
                 {
                     rooms.map((item, index)=>(
                         <tr key={index}>
+                            <td className='py-3 px-4 text-gray-700 border-t border-gray-300'>
+                                {item.hotel?.name || 'N/A'}
+                            </td>
                             <td className='py-3 px-4 text-gray-700 border-t border-gray-300'>
                                 {item.roomType}
                             </td>

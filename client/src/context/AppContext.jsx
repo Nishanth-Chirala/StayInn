@@ -17,6 +17,7 @@ export const AppProvider = ({ children }) => {
     const navigate = useNavigate();
     // Getting user from the clerk
     const {user} = useUser();
+    console.log(user)
     // Extracting token 
     const { getToken } = useAuth();
 

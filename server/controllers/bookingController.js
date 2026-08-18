@@ -109,6 +109,7 @@ export const createBooking = async (req, res) => {
         });
 
         // Mail options
+        console.log(req.user.email)
         const mailOptions = {
             from: process.env.SENDER_EMAIL,
             to: req.user.email,
@@ -172,18 +173,21 @@ export const getUserBookings = async (req, res) => {
     }
 };
 
-// API to get booking details for a particular owner
+// API to get booking details for all hotels owned by the user
 export const getHotelBookings = async (req, res) => {
     try {
         
-        // Find the hotel for this owner
-        const hotel = await Hotel.findOne({ owner: req.user._id });
-        if(!hotel) {
-            return res.json({success: false, message: "No Hotel found"});
+        // Find all hotels for this owner
+        const hotels = await Hotel.find({ owner: req.user._id });
+        if(!hotels || hotels.length === 0) {
+            return res.json({success: false, message: "No hotels found"});
         }
 
-        // Find all bookings for this hotel and populate related data
-        let bookings = await Booking.find({hotel: hotel._id}).populate("room hotel user").sort({createdAt: -1});
+        // Get all hotel IDs
+        const hotelIds = hotels.map(hotel => hotel._id.toString());
+
+        // Find all bookings for these hotels and populate related data
+        let bookings = await Booking.find({hotel: {$in: hotelIds}}).populate("room hotel user").sort({createdAt: -1});
 
         // Remove bookings whose room was deleted
         bookings = bookings.filter(b => b.room);

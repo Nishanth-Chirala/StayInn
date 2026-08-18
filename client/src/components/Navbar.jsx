@@ -64,12 +64,13 @@ const Navbar = () => {
 
                     {/* Dashboard */}
                     {/* When the user is logged in then only dashboard button will be displayed */}
-                    { user && (
-                        <button className={`border px-4 py-1 text-sm font-light rounded-full cursor-pointer ${isScrolled ? 'text-black' : 'text-white'} transition-all`} onClick={()=> isOwner ? navigate('/owner') : setShowHotelReg(true)}>
-                            {isOwner ? 'Dashboard' : 'List Your Hotel'}
-                        </button>
-                        )
-                    }
+                    {user && <button className={`border px-4 py-1 text-sm font-light rounded-full cursor-pointer ${isScrolled ? 'text-black' : 'text-white'} transition-all`} onClick={()=> setShowHotelReg(true)}>
+                        List Your Hotel
+                    </button>}
+
+                    {user && isOwner && <button className={`border px-4 py-1 text-sm font-light rounded-full cursor-pointer ${isScrolled ? 'text-black' : 'text-white'} transition-all`} onClick={()=>  navigate('/owner') }>
+                        Dashboard
+                    </button>}
 
                 </div>
 
@@ -120,8 +121,12 @@ const Navbar = () => {
 
                     {/* Dashboard */}
                     {/* When the user is logged in then only dashboard button will be displayed */}
-                    {user && <button className="border px-4 py-1 text-sm font-light rounded-full cursor-pointer transition-all" onClick={()=> isOwner ? navigate('/owner') : setShowHotelReg(true)}>
-                        {isOwner ? 'Dashboard' : 'List Your Hotel'}
+                    {user && <button className="border px-4 py-1 text-sm font-light rounded-full cursor-pointer transition-all" onClick={()=> setShowHotelReg(true)}>
+                        List Your Hotel
+                    </button>}
+
+                    {user && isOwner && <button className="border px-4 py-1 text-sm font-light rounded-full cursor-pointer transition-all" onClick={()=>  navigate('/owner') }>
+                        Dashboard
                     </button>}
 
                     {!user && <button onClick={openSignIn} className="bg-black text-white px-8 py-2.5 rounded-full transition-all duration-500">

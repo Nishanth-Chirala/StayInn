@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Title from '../../components/Title';
 import { assets } from '../../assets/assets';
 import { useAppContext } from '../../context/AppContext';
@@ -15,7 +15,12 @@ const AddRoom = () => {
         4: null
     });
 
+    const [hotels, setHotels] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [fetchingHotels, setFetchingHotels] = useState(true);
+
     const [inputs, setInputs] = useState({
+        hotelId: '',
         roomType: '',
         pricePerNight: 0,
         discount: 0,
@@ -30,13 +35,33 @@ const AddRoom = () => {
         }
     })
 
-    const [loading, setLoading] = useState(false);
+    // Fetch all hotels owned by the user
+    useEffect(() => {
+        const fetchHotels = async () => {
+            try {
+                const { data } = await axios.get('/api/hotels/', {headers: {Authorization: `Bearer ${await getToken()}`}})
+                if (data.success) {
+                    setHotels(data.hotels);
+                    if (data.hotels.length > 0) {
+                        setInputs(prev => ({...prev, hotelId: data.hotels[0]._id}))
+                    }
+                } else {
+                    toast.error(data.message || "Failed to fetch hotels");
+                }
+            } catch (error) {
+                toast.error(error.message || "Error fetching hotels");
+            } finally {
+                setFetchingHotels(false);
+            }
+        }
+        fetchHotels();
+    }, [axios, getToken]);
 
     const onSubmitHandler = async (e) => {
       e.preventDefault();
       // Check if all inputs are filled
-      if(!inputs.roomType || !inputs.pricePerNight || !inputs.amenities || !Object.values(images).some(image => image)) {
-        toast.error("Please fill in all the details")
+      if(!inputs.hotelId || !inputs.roomType || !inputs.pricePerNight || !inputs.amenities || !Object.values(images).some(image => image)) {
+        toast.error("Please fill in all the details including selecting a hotel")
         return;
       }
       if (inputs.discount < 0 || inputs.discount > 100) {
@@ -52,6 +77,7 @@ const AddRoom = () => {
 
       try {
         const formData = new FormData()
+        formData.append('hotelId', inputs.hotelId)
         formData.append('roomType', inputs.roomType)
         formData.append('pricePerNight', inputs.pricePerNight)
         formData.append('discount', inputs.discount)
@@ -74,6 +100,7 @@ const AddRoom = () => {
           toast.success(data.message)
           // Clear the input fields - after data success
           setInputs({
+            hotelId: inputs.hotelId,
             roomType: '',
             pricePerNight: 0,
             discount: 0,
@@ -103,6 +130,16 @@ const AddRoom = () => {
   return (
     <form onSubmit={onSubmitHandler}>
       <Title align='left' font='outfit' title='Add Room' subTitle='Fill in the details carefully and acurate room details, pricing and amenities, to enhance the user booking experience.'/>
+      
+      {/* Hotel Selection */}
+      {fetchingHotels ? (
+        <p className='text-gray-600 mt-10'>Loading your hotels...</p>
+      ) : hotels.length === 0 ? (
+        <p className='text-red-600 mt-10'>No hotels found. Please register a hotel first.</p>
+      ) : (
+        <div></div>
+      )}
+
       {/* Upload Area for Images  */}
       <p className='text-gray-800 mt-10'>Images</p>
       <div className='grid grid-cols-2 sm:flex gap-4 my-2 flex-wrap'>
@@ -116,6 +153,16 @@ const AddRoom = () => {
       </div>
 
       <div className='w-full flex max-sm:flex-col sm:gap-4 mt-4'>
+        <div className='flex-1 max-w-48'>
+            <p className='text-gray-800 mt-4'>Select Hotel</p>
+            <select value={inputs.hotelId} onChange={e=> setInputs({...inputs, hotelId: e.target.value})} 
+            className='border opacity-70 border-gray-300 mt-1 rounded p-2 w-full'>
+                <option value="">Select Hotel</option>
+                {hotels.map((hotel) => (
+                    <option key={hotel._id} value={hotel._id}>{hotel.name}</option>
+                ))}
+            </select>
+        </div>
         <div className='flex-1 max-w-48'>
             <p className='text-gray-800 mt-4'>Room Type</p>
             <select value={inputs.roomType} onChange={e=> setInputs({...inputs, roomType: e.target.value})} 

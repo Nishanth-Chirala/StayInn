@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 
+
 //Schema : for creating model
 const userSchema = mongoose.Schema({
     _id: { type: String, required: true },
@@ -9,6 +10,7 @@ const userSchema = mongoose.Schema({
     image: { type: String, required: true },
     role: { type: String, enum: ["user", "hotelOwner"], default: "user" },
     recentSearchedCities: { type: [String], default: [] },
+    subcriber: { type: Boolean, default: false },
 }, { timestamps: true });
 
 // User model 
