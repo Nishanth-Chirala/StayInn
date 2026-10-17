@@ -18,7 +18,7 @@ export const createRoom = async (req, res) => {
         // Verify that the hotel belongs to the current user
         const hotel = await Hotel.findOne({ _id: hotelId, owner: req.user._id });
         if (!hotel) {
-            return res.json({success: false, message: "Hotel not found or you are not authorized to add rooms to this hotel"});
+            return res.status(403).json({ success: false, message: "Hotel not found or you are not authorized to add rooms to this hotel" });
         }
 
         const parsedAmenities = typeof amenities === 'string' ? JSON.parse(amenities) : amenities;
@@ -58,7 +58,7 @@ export const updateRoomDiscount = async (req, res) => {
 
         // Verify the hotel belongs to the current user
         if (room.hotel.owner.toString() !== req.user._id.toString()) {
-            return res.json({ success: false, message: "Unauthorized" });
+            return res.status(403).json({ success: false, message: "Unauthorized" });
         }
 
         room.discount = Math.min(Math.max(Number(discount) || 0, 0), 100);
@@ -143,7 +143,7 @@ export const toggleRoomAvailabililty = async (req, res) => {
 
         // Verify the hotel belongs to the current user
         if (roomData.hotel.owner.toString() !== req.user._id.toString()) {
-            return res.json({ success: false, message: "Unauthorized" });
+            return res.status(403).json({ success: false, message: "Unauthorized" });
         }
 
         // Toggling isavailability property

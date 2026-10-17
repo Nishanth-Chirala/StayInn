@@ -106,13 +106,13 @@ const MyBookings = () => {
                 {/* ------ Payment Status ---- */}
                 <div className='flex flex-col items-start justify-center pt-3'>
                     <div className='flex items-center gap-2'>
-                        <div className={`h-3 w-3 rounded-full ${booking.isPaid ? "bg-green-500" : "bg-red-500"}`}></div>
-                        <p className={`text-sm ${booking.isPaid ? "text-green-500" : "text-red-500"}`}>
-                            {booking.isPaid ? "Paid" : "Unpaid"}
+                        <div className={`h-3 w-3 rounded-full ${booking.status === "cancelled" ? "bg-gray-400" : booking.isPaid ? "bg-green-500" : "bg-red-500"}`}></div>
+                        <p className={`text-sm ${booking.status === "cancelled" ? "text-gray-500" : booking.isPaid ? "text-green-500" : "text-red-500"}`}>
+                            {booking.status === "cancelled" ? "Cancelled" : booking.isPaid ? "Paid" : "Unpaid"}
                         </p>
                     </div>
                     {/* For Unpaid  */}
-                    {!booking.isPaid && (
+                    {!booking.isPaid && booking.status !== "cancelled" && (
                         <button onClick={()=>handlePayment(booking._id)} className='px-4 py-1.5 mt-4 text-xs border border-gray-400 rounded-full hover:bg-gray-50 transition-all cursor-pointer'>
                             Pay Now
                         </button>

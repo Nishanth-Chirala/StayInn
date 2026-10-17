@@ -10,6 +10,7 @@ const checkAvailability = async ({ checkInDate, checkOutDate, room }) => {
         // Finding rooms - bookings data
         const bookings = await Booking.find({
             room,
+            status: { $ne: "cancelled" },
             checkInDate: {$lte: checkOutDate},
             checkOutDate: {$gte: checkInDate},
         });
@@ -109,7 +110,6 @@ export const createBooking = async (req, res) => {
         });
 
         // Mail options
-        console.log(req.user.email)
         const mailOptions = {
             from: process.env.SENDER_EMAIL,
             to: req.user.email,
@@ -130,14 +130,25 @@ export const createBooking = async (req, res) => {
             `
         }
 
-        // Sending email
-        await transporter.sendMail(mailOptions)
+        let emailSent = true;
+        try {
+            await transporter.sendMail(mailOptions);
+        } catch (error) {
+            emailSent = false;
+            console.error("Booking was created, but the confirmation email could not be sent:", error);
+        }
 
-        // response
-        res.json({success: true, message: "Booking created successfully"});
+        return res.json({
+            success: true,
+            message: emailSent
+                ? "Booking created successfully."
+                : "Booking created successfully, but the confirmation email could not be sent.",
+            emailSent,
+            bookingId: booking._id,
+        });
     } catch (error) {
         console.error(error);
-        res.json({success: false, message: "Failed to create booking"});
+        return res.status(500).json({ success: false, message: "Failed to create booking" });
     }
 }
 
@@ -192,10 +203,11 @@ export const getHotelBookings = async (req, res) => {
         // Remove bookings whose room was deleted
         bookings = bookings.filter(b => b.room);
 
-        // Total Bookings
-        const totalBookings = bookings.length;
-        // Total Revenue
-        const totalRevenue = bookings.reduce((acc, booking)=>acc + booking.totalPrice, 0)
+        const activeBookings = bookings.filter(booking => booking.status !== "cancelled");
+        const totalBookings = activeBookings.length;
+        const totalRevenue = activeBookings
+            .filter(booking => booking.isPaid)
+            .reduce((total, booking) => total + booking.totalPrice, 0);
 
         // Send response
         res.json({success: true, dashboardData: {totalBookings, totalRevenue, bookings}})
@@ -219,6 +231,12 @@ export const stripePayment = async (req, res) => {
 
         if (booking.user.toString() !== req.user._id.toString()) {
             return res.status(403).json({ success: false, message: "Unauthorized" });
+        }
+        if (booking.status === "cancelled") {
+            return res.status(400).json({ success: false, message: "This booking was cancelled. Please create a new booking." });
+        }
+        if (booking.isPaid) {
+            return res.status(400).json({ success: false, message: "This booking has already been paid." });
         }
 
         // Find room data from booking data
@@ -253,11 +271,23 @@ export const stripePayment = async (req, res) => {
             cancel_url: `${origin}/my-bookings`,
             metadata:{
                 bookingId,
-            }
+            },
+            payment_intent_data: {
+                metadata: { bookingId },
+            },
         })
 
+        const updatedBooking = await Booking.findOneAndUpdate(
+            { _id: bookingId, user: req.user._id, isPaid: false },
+            { $set: { stripeCheckoutSessionId: session.id, status: "pending" } },
+            { new: true }
+        );
+        if (!updatedBooking) {
+            return res.status(409).json({ success: false, message: "Booking is no longer available for payment." });
+        }
+
         // Send response
-        res.json({success: true, url: session.url})
+        return res.json({success: true, url: session.url})
 
     } catch (error) {
         res.json({success: false, message: "Payment Failed"})

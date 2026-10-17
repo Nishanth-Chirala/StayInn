@@ -19,6 +19,7 @@ const RoomDetails = () => {
     const [reviewEligibility, setReviewEligibility] = useState({ loading: true, canReview: false });
 
     const [isAvailable, setIsAvailable] = useState(false);
+    const [paymentMethod, setPaymentMethod] = useState('Pay At Hotel');
 
     const loadRoom = useCallback(async () => {
       try {
@@ -90,12 +91,38 @@ const RoomDetails = () => {
           checkInDate,
           checkOutDate,
           guests: Number(guests),
-          paymentMethod: 'Pay At Hotel',
+          paymentMethod,
         }, {
           headers: { Authorization: `Bearer ${await getToken()}` },
         });
 
         if (data.success) {
+          if (paymentMethod === 'Stripe') {
+            try {
+              const paymentResponse = await axios.post('/api/bookings/stripe-payment', {
+                bookingId: data.bookingId,
+              }, {
+                headers: { Authorization: `Bearer ${await getToken()}` },
+              });
+
+              if (paymentResponse.data.success) {
+                window.location.href = paymentResponse.data.url;
+                return;
+              }
+            } catch (error) {
+              console.error('Unable to start Stripe Checkout:', error);
+              toast.error('Booking created, but online payment could not be started. You can retry from My Bookings.');
+              navigate('/my-bookings');
+              scrollTo(0, 0);
+              return;
+            }
+
+            toast.error('Booking created, but online payment could not be started. You can retry from My Bookings.');
+            navigate('/my-bookings');
+            scrollTo(0, 0);
+            return;
+          }
+
           toast.success(data.message);
           navigate('/my-bookings');
           scrollTo(0, 0);
@@ -280,9 +307,36 @@ const RoomDetails = () => {
               </div>
 
               {/* Right col Button  */}
-              <button type='submit' className='bg-primary hover:bg-primary-dull active:scale-95 transition-all text-white rounded-md max-md:w-full max-md:mt-6 md:px-25 py-3 md:py-4 text-base cursor-pointer'>
-                  { isAvailable ? "Book Now" : "Check Availability" }
-              </button>
+              <div className='flex flex-col gap-3 max-md:w-full max-md:mt-6'>
+                {isAvailable && (
+                  <fieldset className='flex flex-col gap-2 text-sm text-gray-700'>
+                    <legend className='mb-1 font-medium'>Payment option</legend>
+                    <label className='flex items-center gap-2'>
+                      <input
+                        type='radio'
+                        name='paymentMethod'
+                        value='Stripe'
+                        checked={paymentMethod === 'Stripe'}
+                        onChange={() => setPaymentMethod('Stripe')}
+                      />
+                      Pay online now
+                    </label>
+                    <label className='flex items-center gap-2'>
+                      <input
+                        type='radio'
+                        name='paymentMethod'
+                        value='Pay At Hotel'
+                        checked={paymentMethod === 'Pay At Hotel'}
+                        onChange={() => setPaymentMethod('Pay At Hotel')}
+                      />
+                      Pay at the hotel
+                    </label>
+                  </fieldset>
+                )}
+                <button type='submit' className='bg-primary hover:bg-primary-dull active:scale-95 transition-all text-white rounded-md max-md:w-full md:px-25 py-3 md:py-4 text-base cursor-pointer'>
+                    { isAvailable ? "Book Now" : "Check Availability" }
+                </button>
+              </div>
         </form>
 
         {/* Common Specifications  */}

@@ -1,5 +1,6 @@
 import Hotel from "../models/Hotel.js";
 import User from "../models/User.js";
+import transporter from "../configs/nodemailer.js";
 
 // Creating API controller function 
 export const registerHotel = async (req, res) => {
@@ -48,6 +49,9 @@ export const subcribers = async (req, res) => {
     if (!user) {
         return res.status(404).json({ success: false, message: 'Login to Enjoy Benefits' });
     }
+    if(user.subcriber){
+        return res.json({ success: true, alreadySubscribed: true, message: 'You are already subscribed.' });
+    }
 const mailOptions = {
     from: process.env.SENDER_EMAIL,
     to: email,
@@ -87,7 +91,8 @@ const mailOptions = {
         </p>
     `
 };
-
-        // Sending email
+     // Sending email
         await transporter.sendMail(mailOptions)
+        await User.findByIdAndUpdate({_id:user._id},{$set:{subcriber:true}});
+        return res.json({ success: true, alreadySubscribed: false, message: 'Subscription successful!' });
     }
